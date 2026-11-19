@@ -11,6 +11,12 @@ class StockLog extends Model
         'type',
         'quantity',
         'total_price',
-        'note'
+        'profit',
+        'note',
     ];
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

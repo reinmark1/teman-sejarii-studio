@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\StockLog;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 class ProductController extends Controller
 {
@@ -15,18 +16,29 @@ class ProductController extends Controller
         $query = Product::query();
 
         if ($keyword) {
-            $query->where('name', 'ILIKE', "%$keyword%");
+            $query->where('name', 'LIKE', "%{$keyword}%");
         }
 
-        $products = $query->get();
+        $products = $query->orderBy('name', 'asc')->get();
         $availableProducts = $products->where('stock', '>', 0);
         $emptyProducts = $products->where('stock', '<=', 0);
+        $lowStockCount = $products->where('stock', '>', 0)->where('stock', '<=', 5)->count();
 
-        $totalToday = StockLog::where('type', 'out')
+        $todayLogs = StockLog::where('type', 'out')
             ->whereDate('created_at', today())
-            ->sum('total_price');
+            ->get();
 
-        return view('products.index', compact('availableProducts', 'emptyProducts', 'totalToday', 'keyword'));
+        $totalToday = $todayLogs->sum('total_price');
+        $profitToday = $todayLogs->sum('profit');
+
+        return view('products.index', compact(
+            'availableProducts',
+            'emptyProducts',
+            'lowStockCount',
+            'totalToday',
+            'profitToday',
+            'keyword'
+        ));
     }
 
     public function create()
@@ -37,60 +49,105 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'stock' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
             'cost_price' => 'required|numeric|min:0',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $imageName = null;
-        if ($request->hasFile('image')) {
-            $imageName = time() . '.' . $request->image->extension();
-            $request->image->move(public_path('images'), $imageName);
-        }
+        DB::transaction(function () use ($request) {
+            $imageName = null;
+            if ($request->hasFile('image')) {
+                $imageName = time() . '_' . uniqid() . '.' . $request->image->extension();
+                $request->image->move(public_path('images'), $imageName);
+            }
 
-        Product::create([
-            'name' => $request->name,
-            'stock' => $request->stock,
-            'price' => $request->price,
-            'cost_price' => $request->cost_price,
-            'description' => $request->description,
-            'image' => $imageName ?? null,
-        ]);
+            $product = Product::create([
+                'name' => $request->name,
+                'stock' => $request->stock,
+                'price' => $request->price,
+                'cost_price' => $request->cost_price,
+                'description' => $request->description,
+                'image' => $imageName,
+            ]);
 
-        return redirect()->route('products.index')->with('success', 'Produk berhasil ditambahkan.');
+            if ($product->stock > 0) {
+                StockLog::create([
+                    'product_id' => $product->id,
+                    'type' => 'in',
+                    'quantity' => $product->stock,
+                    'total_price' => $product->stock * $product->cost_price,
+                    'profit' => 0,
+                    'note' => 'Stok awal produk',
+                ]);
+            }
+        });
+
+        return redirect()->route('products.index')->with('success', 'Koleksi berhasil ditambahkan.');
     }
 
     public function stockOut(Request $request, Product $product)
     {
         $request->validate([
             'quantity' => 'required|integer|min:1',
+            'note' => 'nullable|string|max:255',
         ]);
 
-        if ($product->stock < $request->quantity) {
-            return back()->with('error', 'Stok tidak cukup');
+        try {
+            $result = DB::transaction(function () use ($request, $product) {
+                $lockedProduct = Product::where('id', $product->id)->lockForUpdate()->first();
+
+                if ($lockedProduct->stock < $request->quantity) {
+                    throw new \Exception('Stok tidak mencukupi (Sisa stok: ' . $lockedProduct->stock . ').');
+                }
+
+                $lockedProduct->decrement('stock', $request->quantity);
+
+                $quantity = $request->quantity;
+                $total = $quantity * $lockedProduct->price;
+                $profit = $quantity * ($lockedProduct->price - ($lockedProduct->cost_price ?? 0));
+
+                StockLog::create([
+                    'product_id' => $lockedProduct->id,
+                    'type' => 'out',
+                    'quantity' => $quantity,
+                    'total_price' => $total,
+                    'profit' => $profit,
+                    'note' => $request->note ?? 'Penjualan',
+                ]);
+
+                return ['total' => $total, 'profit' => $profit];
+            });
+
+            return back()->with('success', 'Penjualan tercatat. Omzet Rp ' . number_format($result['total'], 0, ',', '.') . ' | Laba Rp ' . number_format($result['profit'], 0, ',', '.'));
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
+    }
 
-        $product->decrement('stock', $request->quantity);
-
-        $sellingPrice = $product->price;
-        $costPrice = $product->cost_price ?? 0;
-        $quantity = $request->quantity;
-        $total = $quantity * $sellingPrice;
-        $profit = $quantity * ($sellingPrice - $costPrice);
-
-        StockLog::create([
-            'product_id' => $product->id,
-            'type' => 'out',
-            'quantity' => $quantity,
-            'total_price' => $total,
-            'profit' => $profit,
-            'note' => $request->note,
+    public function stockIn(Request $request, Product $product)
+    {
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'note' => 'nullable|string|max:255',
         ]);
 
-        return back()->with('success', 'Stok keluar. Pendapatan Rp ' . number_format($total, 0, ',', '.') . ' | Keuntungan Rp ' . number_format($profit, 0, ',', '.'));
+        DB::transaction(function () use ($request, $product) {
+            $product->increment('stock', $request->quantity);
+
+            StockLog::create([
+                'product_id' => $product->id,
+                'type' => 'in',
+                'quantity' => $request->quantity,
+                'total_price' => $request->quantity * ($product->cost_price ?? 0),
+                'profit' => 0,
+                'note' => $request->note ?? 'Restock barang masuk',
+            ]);
+        });
+
+        return back()->with('success', 'Berhasil menambah ' . $request->quantity . ' stok untuk ' . $product->name . '.');
     }
 
     public function show(Product $product)
@@ -100,10 +157,12 @@ class ProductController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $transactionLabels = $transactions->map(function ($log) {
-            return \Carbon\Carbon::parse($log->created_at)->format('d M H:i');
-        });
+        $allLogs = StockLog::where('product_id', $product->id)
+            ->latest()
+            ->take(20)
+            ->get();
 
+        $transactionLabels = $transactions->map(fn($log) => $log->created_at->format('d M H:i'));
         $transactionQuantities = $transactions->pluck('quantity');
         $transactionProfits = $transactions->pluck('profit');
 
@@ -113,6 +172,7 @@ class ProductController extends Controller
 
         return view('products.show', compact(
             'product',
+            'allLogs',
             'transactionLabels',
             'transactionQuantities',
             'transactionProfits',
@@ -122,49 +182,107 @@ class ProductController extends Controller
         ));
     }
 
+    public function edit(Product $product)
+    {
+        return view('products.edit', compact('product'));
+    }
+
     public function update(Request $request, Product $product)
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'price' => 'required|numeric',
-            'cost_price' => 'required|numeric',
+            'price' => 'required|numeric|min:0',
+            'cost_price' => 'required|numeric|min:0',
             'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'stock_in' => 'nullable|integer|min:0',
             'stock_out' => 'nullable|integer|min:0',
         ]);
 
-        // Update data dasar
-        $product->name = $request->name;
-        $product->price = $request->price;
-        $product->cost_price = $request->cost_price;
-        $product->description = $request->description;
+        DB::transaction(function () use ($request, $product) {
+            if ($request->hasFile('image')) {
+                if ($product->image && File::exists(public_path('images/' . $product->image))) {
+                    File::delete(public_path('images/' . $product->image));
+                }
+                $imageName = time() . '_' . uniqid() . '.' . $request->image->extension();
+                $request->image->move(public_path('images'), $imageName);
+                $product->image = $imageName;
+            }
 
-        // Tambah stok jika ada
-        if ($request->filled('stock_in')) {
-            $product->stock += $request->stock_in;
-        }
+            $product->name = $request->name;
+            $product->price = $request->price;
+            $product->cost_price = $request->cost_price;
+            $product->description = $request->description;
 
-        // Kurangi stok jika ada koreksi keluar
-        if ($request->filled('stock_out')) {
-            $product->stock = max(0, $product->stock - $request->stock_out);
-        }
+            if ($request->filled('stock_in') && $request->stock_in > 0) {
+                $product->stock += $request->stock_in;
+                StockLog::create([
+                    'product_id' => $product->id,
+                    'type' => 'in',
+                    'quantity' => $request->stock_in,
+                    'total_price' => $request->stock_in * $product->cost_price,
+                    'profit' => 0,
+                    'note' => 'Penambahan stok via Edit Produk',
+                ]);
+            }
 
-        $product->save();
+            if ($request->filled('stock_out') && $request->stock_out > 0) {
+                $actualOut = min($product->stock, $request->stock_out);
+                $product->stock -= $actualOut;
+                if ($actualOut > 0) {
+                    StockLog::create([
+                        'product_id' => $product->id,
+                        'type' => 'correction',
+                        'quantity' => $actualOut,
+                        'total_price' => 0,
+                        'profit' => 0,
+                        'note' => 'Koreksi pengurangan stok via Edit Produk',
+                    ]);
+                }
+            }
 
-        return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui.');
+            $product->save();
+        });
+
+        return redirect()->route('products.index')->with('success', 'Koleksi berhasil diperbarui.');
     }
 
-
-    public function destroy($id)
+    public function destroy(Product $product)
     {
-        $product = Product::findOrFail($id);
+        if ($product->image && File::exists(public_path('images/' . $product->image))) {
+            File::delete(public_path('images/' . $product->image));
+        }
+
         $product->delete();
 
-        return redirect()->route('products.index')->with('success', 'Produk berhasil dihapus');
+        return redirect()->route('products.index')->with('success', 'Koleksi berhasil dihapus.');
     }
 
-    public function edit(Product $product)
+    public function reports(Request $request)
     {
-        return view('products.edit', compact('product'));
+        $startDate = $request->query('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->query('end_date', now()->toDateString());
+
+        $logs = StockLog::with('product')
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate)
+            ->latest()
+            ->get();
+
+        $salesLogs = $logs->where('type', 'out');
+        $totalRevenue = $salesLogs->sum('total_price');
+        $totalProfit = $salesLogs->sum('profit');
+        $totalItemsSold = $salesLogs->sum('quantity');
+        $totalRestockCost = $logs->where('type', 'in')->sum('total_price');
+
+        return view('reports.index', compact(
+            'logs',
+            'startDate',
+            'endDate',
+            'totalRevenue',
+            'totalProfit',
+            'totalItemsSold',
+            'totalRestockCost'
+        ));
     }
 }

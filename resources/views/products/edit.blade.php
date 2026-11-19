@@ -1,65 +1,100 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Edit Produk</title>
-    <link rel="stylesheet" href="{{ asset('css/style2.css') }}">
-</head>
-<body class="edit-page">
+@extends('layouts.app')
 
-    <div class="navbar">
-        <!-- Tambahkan logo di sini jika ingin -->
-        <span class="logo">Teman Sejari</span>
-    </div>
+@section('title', 'Edit ' . $product->name . ' — teman sejarii')
 
-    <div class="form-container">
-        <h1>Edit Produk: {{ $product->name }}</h1>
+@section('content')
+    <div class="max-w-2xl mx-auto">
+        <div class="mb-6">
+            <p class="text-xs uppercase tracking-[0.2em] text-taupe mb-1">Perbarui Informasi</p>
+            <h1 class="font-editorial text-3xl sm:text-4xl font-semibold">Edit Koleksi</h1>
+            <p class="text-xs text-taupe mt-1">{{ $product->name }}</p>
+        </div>
 
-        <form action="{{ route('products.update', $product->id) }}" method="POST" class="product-form">
+        @if($errors->any())
+            <div class="mb-6 p-4 rounded-md bg-red-50 border border-red-200 text-xs text-red-800 space-y-1">
+                @foreach($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        @endif
+
+        <form action="{{ route('products.update', $product) }}" method="POST" enctype="multipart/form-data" class="card-editorial p-6 sm:p-8 space-y-5">
             @csrf
             @method('PUT')
 
-            <div class="form-group">
-                <label>Nama Produk:</label>
-                <input type="text" name="name" value="{{ $product->name }}" required>
+            <div>
+                <label class="label-editorial">Nama Koleksi / Produk</label>
+                <input type="text" name="name" value="{{ old('name', $product->name) }}" required class="input-editorial">
             </div>
 
-            <div class="form-group">
-                <label>Harga Jual:</label>
-                <input type="number" name="price" step="0.01" value="{{ $product->price }}" required>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="label-editorial">Harga Jual (Rp)</label>
+                    <input type="number" name="price" step="1" value="{{ old('price', (int) $product->price) }}" min="0" required
+                           class="input-editorial tabular-nums">
+                </div>
+
+                <div>
+                    <label class="label-editorial">Harga Modal (Rp)</label>
+                    <input type="number" name="cost_price" step="1" value="{{ old('cost_price', (int) $product->cost_price) }}" min="0" required
+                           class="input-editorial tabular-nums">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Harga Modal:</label>
-                <input type="number" name="cost_price" step="0.01" value="{{ $product->cost_price }}" required>
+            <div class="p-4 rounded-md bg-ivory border border-sand space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="label-editorial !mb-0">Penyesuaian Stok</span>
+                    <span class="text-xs font-semibold tabular-nums">Stok Saat Ini: {{ $product->stock }} unit</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-taupe block mb-1">Tambah Stok Masuk (+)</label>
+                        <input type="number" name="stock_in" min="0" placeholder="0" class="input-editorial !bg-white tabular-nums">
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-taupe block mb-1">Koreksi Pengurangan Stok (-)</label>
+                        <input type="number" name="stock_out" min="0" placeholder="0" class="input-editorial !bg-white tabular-nums">
+                    </div>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Stok Saat Ini:</label>
-                <input type="text" value="{{ $product->stock }} unit" disabled>
+            <div>
+                <label class="label-editorial">Deskripsi</label>
+                <textarea name="description" rows="3" class="input-editorial">{{ old('description', $product->description) }}</textarea>
             </div>
 
-            <div class="form-group">
-                <label>Tambah Stok Masuk:</label>
-                <input type="number" name="stock_in" min="0" placeholder="0">
+            <div>
+                <label class="label-editorial">Ganti Foto Produk (Biarkan kosong jika tetap)</label>
+                <div class="flex items-start gap-4 mt-2">
+                    <div id="preview-wrapper" class="{{ $product->image ? '' : 'hidden' }} w-20 aspect-[4/5] rounded-md overflow-hidden border border-sand shrink-0">
+                        <img id="preview-img" src="{{ $product->image ? asset('images/' . $product->image) : '' }}" alt="{{ $product->name }}"
+                             class="w-full h-full object-cover">
+                    </div>
+                    <input type="file" name="image" accept="image/*" data-image-input class="file-input-editorial">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Revisi/Pengembalian Stok (koreksi keluar):</label>
-                <input type="number" name="stock_out" min="0" placeholder="0">
-            </div>
+            <div class="pt-4 border-t border-sand flex items-center justify-between">
+                <button type="button" data-delete-trigger class="text-xs text-red-700 hover:underline">
+                    Hapus Produk
+                </button>
 
-            <div class="form-group">
-                <label>Deskripsi:</label>
-                <textarea name="description">{{ $product->description }}</textarea>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('products.index') }}" class="btn-outline-sand">Batal</a>
+                    <button type="submit" class="btn-espresso">Simpan Perubahan</button>
+                </div>
             </div>
-
-            <button type="submit" class="btn-tambah">Simpan Perubahan</button>
         </form>
 
-        <br>
-        <a href="{{ route('products.index') }}">← Kembali ke Daftar Produk</a>
+        <form id="delete-form" action="{{ route('products.destroy', $product) }}" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
     </div>
+@endsection
 
-</body>
-</html>
+@push('scripts')
+    <script src="{{ asset('js/product-form.js') }}"></script>
+@endpush

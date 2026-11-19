@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'stock', 'price', 'description', 'image', 'cost_price'];
-
-    public function sales()
-    {
-        return $this->hasMany(Sale::class);
-    }
+    protected $fillable = [
+        'name',
+        'stock',
+        'price',
+        'cost_price',
+        'description',
+        'image',
+    ];
 
     public function stockLogs()
     {
