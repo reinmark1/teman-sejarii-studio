@@ -1,68 +1,146 @@
-<!-- README.md -->
+# teman sejarii — Sistem Manajemen Inventaris & Penjualan Akseseoris
 
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+**teman sejarii** adalah aplikasi web internal *full-stack* yang dirancang untuk mendukung operasional nyata bisnis ritel perhiasan dan aksesori **teman sejarii**. Sistem ini mempermudah pengelolaan inventaris, pencatatan transaksi kasir harian, pemantauan riwayat pergerakan stok, serta kalkulasi laporan laba bersih secara otomatis. Dibangun menggunakan **Laravel 11, MySQL, dan Tailwind CSS**, aplikasi ini menghadirkan desain antarmuka bergaya *editorial boutique* yang bersih, responsif, dan praktis digunakan dalam aktivitas studio sehari-hari.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+---
 
-## About Laravel
+## ✨ Fitur Utama
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### 📦 Manajemen Inventaris & Katalog
+- **Katalog Koleksi & Status Stok:** Menampilkan daftar seluruh produk lengkap dengan foto, harga modal (*cost price*), harga jual, serta indikator status ketersediaan otomatis (*tersedia*, *menipis*, atau *habis*).
+- **Pencarian Produk Cepat:** Memudahkan pencarian koleksi gelang, charm, maupun aksesori secara instan di halaman katalog.
+- **CRUD Produk Lengkap:** Menambah, memperbarui informasi/foto, dan menghapus produk dengan validasi input berlapis.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 🧾 Kasir Harian & Pergerakan Stok
+- **Pencatatan Penjualan & Restock Real-Time:** Mencatat transaksi penjualan harian maupun penambahan stok barang masuk langsung dari halaman detail produk dengan pembaruan jumlah stok otomatis.
+- **Riwayat Pergerakan Stok (*Stock Logs*):** Menyimpan log seluruh aktivitas barang masuk dan keluar beserta visualisasi grafik tren stok dan penjualan per produk.
+- **Ringkasan Keuangan & Laporan Penjualan:** Menyajikan metrik **Omzet Hari Ini**, **Laba Bersih Hari Ini** (dihitung otomatis dari selisih harga jual dan harga modal), serta halaman laporan penjualan terdedikasi.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 🔐 Autentikasi & Keamanan Studio
+- **Kode Undangan Studio (`STUDIO_INVITE_CODE`):** Melindungi rute registrasi pengelola baru menggunakan kode akses berbasis `.env` agar hanya pihak berwenang yang dapat membuat akun admin.
+- **Kontrol Input & Interaksi UX:** Dilengkapi fitur *show/hide password* modular (`password-toggle.js`), pembatasan panjang karakter input (`maxlength`), serta tata letak navigasi yang ringkas.
+- **Konfigurasi Dual-Database:** Mendukung pemisahan lingkungan database antara mode demo portofolio (`teman_sejari_demo`) dan operasional data asli (`teman_sejari`).
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 🧰 Tech Stack
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- **Backend:** PHP 8.2+, Laravel 11
+- **Database & ORM:** MySQL, Eloquent ORM
+- **Templating Engine:** Laravel Blade
+- **Autentikasi & Sesi:** Laravel Session Auth, Bcrypt Hashing
+- **Upload File:** Laravel Public Storage (`public/images/`)
+- **Frontend Styling & Scripts:** Tailwind CSS, Custom Editorial CSS, Vanilla JavaScript
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## 📂 Struktur Proyek
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```text
+Teman-Sejari/
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── AuthController.php       # Login, logout & validasi STUDIO_INVITE_CODE
+│   │   └── ProductController.php    # CRUD produk, mutasi stok & laporan penjualan
+│   └── Models/
+│       ├── Product.php              # Skema & relasi data produk
+│       ├── StockLog.php             # Skema riwayat barang masuk & penjualan
+│       └── User.php                 # Skema akun pengelola studio
+├── database/
+│   ├── migrations/                  # Skema tabel users, products & stock_logs
+│   └── seeders/
+│       └── DatabaseSeeder.php       # Seeder akun demo & sampel produk katalog
+├── public/
+│   ├── css/global.css               # Design tokens & styling editorial boutique
+│   ├── images/                      # Aset foto produk
+│   └── js/password-toggle.js        # Interaksi tampilkan/sembunyikan kata sandi
+├── resources/views/
+│   ├── auth/                        # Halaman login & registrasi pengelola
+│   ├── layouts/                     # Template layout utama & autentikasi
+│   ├── products/                    # Katalog, detail produk, tambah & edit
+│   └── reports/                     # Halaman laporan omzet & laba bersih
+├── routes/
+│   └── web.php                      # Definisi rute publik & terproteksi middleware
+├── .env.example                     # Template konfigurasi environment
+└── composer.json
+```
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## 🚀 Cara Menjalankan Aplikasi
 
-## Contributing
+### 1. Prasyarat
+- [PHP](https://www.php.net/) (v8.2 atau lebih baru) & [Composer](https://getcomposer.org/)
+- [MySQL](https://www.mysql.com/) (via Laragon, XAMPP, atau MySQL Server)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2. Instalasi
+Clone repositori ini dan install seluruh dependensi PHP:
+```bash
+git clone [https://github.com/reinmark1/Teman-Sejari.git](https://github.com/reinmark1/Teman-Sejari.git)
+cd Teman-Sejari
+composer install
+```
 
-## Code of Conduct
+### 3. Konfigurasi Environment
+Salin file `.env.example` menjadi `.env`, lalu generate *application key*:
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Buat database kosong bernama `teman_sejari_demo` di MySQL, lalu pastikan konfigurasi di file `.env` sudah sesuai:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=teman_sejari_demo
+DB_USERNAME=root
+DB_PASSWORD=
 
-## Security Vulnerabilities
+STUDIO_INVITE_CODE=sejarii2026
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 4. Migrasi Database & Jalankan Server
+Jalankan migrasi beserta *seeder* data demo, lalu nyalakan server lokal:
+```bash
+php artisan migrate:fresh --seed
+php artisan serve
+```
+Buka browser dan kunjungi: **`http://127.0.0.1:8000`**
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 🔑 Akses Demo & Registrasi Pengelola
+
+### 1. Akun Demo (Langsung Masuk)
+Setelah menjalankan `php artisan migrate:fresh --seed`, kamu dapat langsung masuk melalui halaman `/login` menggunakan akun demo berikut:
+
+- **Email:** `owner@temansejarii.com`
+- **Kata Sandi:** `rahasia123`
+
+### 2. Alur Penambahan Admin pada Kasus Nyata (`STUDIO_INVITE_CODE`)
+Karena **teman sejarii** merupakan sistem internal studio yang memuat data sensitif (harga modal, stok barang, dan laporan laba bersih), rute pendaftaran pengelola baru (`/register`) tidak dibuka untuk publik secara bebas.
+
+Dalam skenario operasional nyata:
+1. **Owner Bisnis** menetapkan kode rahasia studio pada variabel `STUDIO_INVITE_CODE` di file `.env` server produksi.
+2. Saat **partner bisnis atau admin baru** perlu dibuatkan akses, Owner membagikan **Kode Undangan Studio** tersebut secara privat.
+3. Calon admin membuka halaman `/register`, mengisi data diri beserta **Kode Undangan Studio**. Sistem (`AuthController`) akan memverifikasi kecocokan kode secara aman (`hash_equals`) sebelum mengizinkan pembuatan akun dan memberikan akses ke *Shared Studio Workspace*.
+4. Jika suatu saat terjadi pergantian staf atau partner, Owner cukup mengganti nilai `STUDIO_INVITE_CODE` di `.env` agar kode lama tidak lagi berlaku.
+
+Untuk menguji alur pendaftaran ini pada lingkungan demo lokal, gunakan kode akses bawaan berikut:
+
+- **Kode Undangan Studio:** `sejarii2026`
+
+---
+
+## 🔄 Beralih ke Mode Operasional (Data Asli)
+
+Untuk menggunakan aplikasi pada lingkungan bisnis nyata tanpa data dummy:
+1. Buat database kosong baru bernama `teman_sejari` di MySQL.
+2. Ubah variabel `DB_DATABASE=teman_sejari` di file `.env` serta ganti `STUDIO_INVITE_CODE` dengan kode rahasia pilihanmu.
+3. Jalankan migrasi bersih **tanpa** *seeder*:
+   ```bash
+   php artisan config:clear
+   php artisan migrate
+   ```
+4. Daftarkan akun owner utama melalui `/register` menggunakan kode undangan yang baru.
