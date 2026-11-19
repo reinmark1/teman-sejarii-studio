@@ -144,3 +144,21 @@ Untuk menggunakan aplikasi pada lingkungan bisnis nyata tanpa data dummy:
    php artisan migrate
    ```
 4. Daftarkan akun owner utama melalui `/register` menggunakan kode undangan yang baru.
+
+---
+
+## 📸 Tampilan Aplikasi
+
+| Katalog Koleksi & Ringkasan Harian | Detail Produk & Log Pergerakan Stok |
+| :---: | :---: |
+| ![Katalog Koleksi](public/images/screenshots/katalog-page.png) | ![Detail Produk](public/images/screenshots/detail-produk.png) |
+
+| Laporan Penjualan & Laba Bersih | Tambah Produk Koleksi |
+| :---: | :---: |
+| ![Laporan Penjualan](public/images/screenshots/laporan-penjualan.png) | ![Tambah Produk](public/images/screenshots/tambah-produk.png) |
+
+| Masuk Studio (Login) | Registrasi Pengelola (Invite Code) |
+| :---: | :---: |
+| ![Login Studio](public/images/screenshots/login-page.png) | ![Registrasi Pengelola](public/images/screenshots/registration-page.png) |
+
+---
